@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, MapPin, Phone, Mail } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PetFinderForm() {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     missingDate: "",
     missingLocation: "",
@@ -15,18 +18,47 @@ export default function PetFinderForm() {
     phone: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Pet finder form submitted:", formData);
-    alert("신고가 접수되었습니다. 빠른 시일 내에 연락드리겠습니다.");
-    setFormData({
-      missingDate: "",
-      missingLocation: "",
-      petName: "",
-      petType: "",
-      email: "",
-      phone: "",
-    });
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/pet-reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "신고 접수 완료",
+          description: "빠른 시일 내에 연락드리겠습니다.",
+        });
+        setFormData({
+          missingDate: "",
+          missingLocation: "",
+          petName: "",
+          petType: "",
+          email: "",
+          phone: "",
+        });
+      } else {
+        throw new Error(result.error || "신고 접수에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Error submitting pet report:", error);
+      toast({
+        title: "오류 발생",
+        description: "신고 접수 중 오류가 발생했습니다. 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +88,7 @@ export default function PetFinderForm() {
                 value={formData.missingDate}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
                 data-testid="input-missing-date"
                 className="h-12"
               />
@@ -74,6 +107,7 @@ export default function PetFinderForm() {
                 value={formData.missingLocation}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
                 data-testid="input-missing-location"
                 className="h-12"
               />
@@ -93,6 +127,7 @@ export default function PetFinderForm() {
                 value={formData.petName}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
                 data-testid="input-pet-name"
                 className="h-12"
               />
@@ -110,6 +145,7 @@ export default function PetFinderForm() {
                 value={formData.petType}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
                 data-testid="input-pet-type"
                 className="h-12"
               />
@@ -130,6 +166,7 @@ export default function PetFinderForm() {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
                 data-testid="input-email"
                 className="h-12"
               />
@@ -148,14 +185,20 @@ export default function PetFinderForm() {
                 value={formData.phone}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
                 data-testid="input-phone"
                 className="h-12"
               />
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-12 text-base" data-testid="button-submit-pet-finder">
-            신고 접수하기
+          <Button 
+            type="submit" 
+            className="w-full h-12 text-base" 
+            disabled={isSubmitting}
+            data-testid="button-submit-pet-finder"
+          >
+            {isSubmitting ? "처리중..." : "신고 접수하기"}
           </Button>
         </form>
       </CardContent>

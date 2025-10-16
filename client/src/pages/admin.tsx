@@ -1,67 +1,118 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AdminLogin from "@/components/AdminLogin";
 import AdminDashboard from "@/components/AdminDashboard";
+import { useToast } from "@/hooks/use-toast";
+
+interface PetReport {
+  id: number;
+  missingDate: string;
+  missingLocation: string;
+  petName: string;
+  petType: string;
+  email: string;
+  phone: string;
+  submittedAt: string;
+}
+
+interface AdRequest {
+  id: number;
+  companyName: string;
+  representativeName: string;
+  phone: string;
+  email: string;
+  submittedAt: string;
+}
 
 export default function Admin() {
+  const { toast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  //todo: remove mock functionality - replace with real data from backend
-  const mockPetReports = [
-    {
-      id: 1,
-      missingDate: "2025-10-14",
-      missingLocation: "서울시 강남구 역삼동",
-      petName: "복실이",
-      petType: "말티즈",
-      email: "owner@example.com",
-      phone: "010-1234-5678",
-      submittedAt: "2025-10-15 14:30",
-    },
-    {
-      id: 2,
-      missingDate: "2025-10-13",
-      missingLocation: "서울시 송파구 잠실동",
-      petName: "초코",
-      petType: "푸들",
-      email: "cho@example.com",
-      phone: "010-9876-5432",
-      submittedAt: "2025-10-15 10:15",
-    },
-  ];
+  const { data: petReportsData, refetch: refetchPetReports } = useQuery<{ success: boolean; data: PetReport[] }>({
+    queryKey: ['/api/pet-reports'],
+    enabled: isLoggedIn,
+  });
 
-  //todo: remove mock functionality - replace with real data from backend
-  const mockAdRequests = [
-    {
-      id: 1,
-      companyName: "펫케어 주식회사",
-      representativeName: "김철수",
-      phone: "02-1234-5678",
-      email: "contact@petcare.com",
-      submittedAt: "2025-10-15 09:20",
-    },
-  ];
+  const { data: adRequestsData, refetch: refetchAdRequests } = useQuery<{ success: boolean; data: AdRequest[] }>({
+    queryKey: ['/api/ad-requests'],
+    enabled: isLoggedIn,
+  });
 
-  const handleLogin = (username: string, password: string) => {
-    //todo: remove mock functionality - implement real authentication
-    if (username === "admin" && password === "123456") {
-      setIsLoggedIn(true);
-    } else {
-      alert("아이디 또는 비밀번호가 올바르지 않습니다.");
+  useEffect(() => {
+    if (isLoggedIn) {
+      const interval = setInterval(() => {
+        refetchPetReports();
+        refetchAdRequests();
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn, refetchPetReports, refetchAdRequests]);
+
+  const handleLogin = async (username: string, password: string) => {
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setIsLoggedIn(true);
+        toast({
+          title: "로그인 성공",
+          description: "관리자 페이지에 접속했습니다.",
+        });
+      } else {
+        toast({
+          title: "로그인 실패",
+          description: "아이디 또는 비밀번호가 올바르지 않습니다.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "오류 발생",
+        description: "로그인 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    toast({
+      title: "로그아웃",
+      description: "로그아웃되었습니다.",
+    });
   };
 
   if (!isLoggedIn) {
     return <AdminLogin onLogin={handleLogin} />;
   }
 
+  const petReports = petReportsData?.data || [];
+  const adRequests = adRequestsData?.data || [];
+
+  const formattedPetReports = petReports.map(report => ({
+    ...report,
+    submittedAt: new Date(report.submittedAt).toLocaleString('ko-KR'),
+  }));
+
+  const formattedAdRequests = adRequests.map(request => ({
+    ...request,
+    submittedAt: new Date(request.submittedAt).toLocaleString('ko-KR'),
+  }));
+
   return (
     <AdminDashboard
-      petReports={mockPetReports}
-      adRequests={mockAdRequests}
+      petReports={formattedPetReports}
+      adRequests={formattedAdRequests}
       onLogout={handleLogout}
     />
   );

@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, User, Phone, Mail } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdvertiserSection() {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     companyName: "",
     representativeName: "",
@@ -13,16 +16,45 @@ export default function AdvertiserSection() {
     email: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Advertiser form submitted:", formData);
-    alert("광고 신청이 접수되었습니다. 담당자가 곧 연락드리겠습니다.");
-    setFormData({
-      companyName: "",
-      representativeName: "",
-      phone: "",
-      email: "",
-    });
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/ad-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "광고 신청 완료",
+          description: "담당자가 곧 연락드리겠습니다.",
+        });
+        setFormData({
+          companyName: "",
+          representativeName: "",
+          phone: "",
+          email: "",
+        });
+      } else {
+        throw new Error(result.error || "광고 신청에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Error submitting ad request:", error);
+      toast({
+        title: "오류 발생",
+        description: "광고 신청 중 오류가 발생했습니다. 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,9 +69,9 @@ export default function AdvertiserSection() {
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
               함께 성장할 광고주를 찾습니다
             </h2>
-            <div className="space-y-4 text-muted-foreground">
+            <div className="space-y-4 text-muted-foreground mb-6">
               <p className="text-lg">
-                반려동물을 사랑하는 대학생들이 만든 따뜻한 플랫폼입니다.
+                반려동물 찾기 GPS가 탑재된 디바이스에 광고를 넣어서 반려동물 찾기 서비스를 시작합니다.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-start gap-2">
@@ -53,6 +85,10 @@ export default function AdvertiserSection() {
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-1">✓</span>
                   <span><strong className="text-foreground">합리적인 광고비</strong>로 효과적인 노출</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary mt-1">✓</span>
+                  <span><strong className="text-foreground">GPS 디바이스 광고</strong>를 통한 직접적인 홍보 효과</span>
                 </li>
               </ul>
             </div>
@@ -77,6 +113,7 @@ export default function AdvertiserSection() {
                     value={formData.companyName}
                     onChange={handleChange}
                     required
+                    disabled={isSubmitting}
                     data-testid="input-company-name"
                     className="h-12"
                   />
@@ -95,6 +132,7 @@ export default function AdvertiserSection() {
                     value={formData.representativeName}
                     onChange={handleChange}
                     required
+                    disabled={isSubmitting}
                     data-testid="input-representative-name"
                     className="h-12"
                   />
@@ -113,6 +151,7 @@ export default function AdvertiserSection() {
                     value={formData.phone}
                     onChange={handleChange}
                     required
+                    disabled={isSubmitting}
                     data-testid="input-ad-phone"
                     className="h-12"
                   />
@@ -131,13 +170,19 @@ export default function AdvertiserSection() {
                     value={formData.email}
                     onChange={handleChange}
                     required
+                    disabled={isSubmitting}
                     data-testid="input-ad-email"
                     className="h-12"
                   />
                 </div>
 
-                <Button type="submit" className="w-full h-12 text-base" data-testid="button-submit-advertiser">
-                  광고 신청하기
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base" 
+                  disabled={isSubmitting}
+                  data-testid="button-submit-advertiser"
+                >
+                  {isSubmitting ? "처리중..." : "광고 신청하기"}
                 </Button>
               </form>
             </CardContent>
